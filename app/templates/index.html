@@ -3,171 +3,7 @@
 <head>
     <title>Chat avec le Pirate</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
-    <style>
-        body {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            font-family: 'Pirata One', cursive;
-            background-color: #f4d03f;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        }
-
-        h1 {
-            text-align: center;
-            color: #8b4513;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-            font-size: 2.5em;
-        }
-
-        #chat-container {
-            height: 50vh;
-            overflow-y: auto;
-            border: 3px solid #8b4513;
-            padding: 20px;
-            margin-bottom: 20px;
-            background: rgba(255, 248, 220, 0.9);
-            border-radius: 15px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .message {
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 5px;
-            max-width: 80%;
-        }
-
-        .user {
-            background-color: #e3f2fd;
-            margin-left: 20%;
-            border: 2px solid #1a5f7a;
-        }
-
-        .assistant {
-            background-color: #8b4513;
-            color: #fff;
-            margin-right: 20%;
-            border: 2px solid #654321;
-        }
-
-        .input-container {
-            display: grid;
-            grid-gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .input-row {
-            display: flex;
-            gap: 10px;
-        }
-
-        .input-field {
-            flex-grow: 1;
-            padding: 10px;
-            border: 2px solid #8b4513;
-            border-radius: 5px;
-            font-family: inherit;
-            background: rgba(255, 248, 220, 0.9);
-        }
-
-        button {
-            padding: 10px 20px;
-            background-color: #8b4513;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 1.1em;
-            transition: all 0.3s ease;
-        }
-
-        button:hover {
-            background-color: #654321;
-            transform: scale(1.05);
-        }
-
-        #error-message {
-            color: #ff0000;
-            margin: 10px 0;
-            text-align: center;
-        }
-
-        .skull {
-            font-size: 2em;
-            text-align: center;
-            margin: 10px 0;
-        }
-
-        .loading {
-            display: inline-block;
-            position: relative;
-            width: 80px;
-            height: 80px;
-        }
-
-        .loading div {
-            position: absolute;
-            border: 4px solid #8b4513;
-            opacity: 1;
-            border-radius: 50%;
-            animation: loading 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-        }
-
-        .loading div:nth-child(2) {
-            animation-delay: -0.5s;
-        }
-
-        @keyframes loading {
-            0% {
-                top: 36px;
-                left: 36px;
-                width: 0;
-                height: 0;
-                opacity: 0;
-            }
-            4.9% {
-                top: 36px;
-                left: 36px;
-                width: 0;
-                height: 0;
-                opacity: 0;
-            }
-            5% {
-                top: 36px;
-                left: 36px;
-                width: 0;
-                height: 0;
-                opacity: 1;
-            }
-            100% {
-                top: 0px;
-                left: 0px;
-                width: 72px;
-                height: 72px;
-                opacity: 0;
-            }
-        }
-
-        .loading-message {
-            text-align: center;
-            margin: 20px 0;
-            font-size: 1.2em;
-            color: #8b4513;
-        }
-
-        @keyframes sway {
-            0% { transform: rotate(-5deg); }
-            50% { transform: rotate(5deg); }
-            100% { transform: rotate(-5deg); }
-        }
-
-        .sway {
-            display: inline-block;
-            animation: sway 2s ease-in-out infinite;
-        }
-    </style>
+    <link rel="stylesheet" href="../static/css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Pirata+One&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -181,6 +17,11 @@
     <div class="input-container">
         <div class="input-row">
             <input type="password" id="password-input" class="input-field" placeholder="Mot de passe du trésor..." required>
+            <span class="model-label">Modèle:</span>
+            <select id="model-select" class="input-field">
+                <option value="titan">Titan</option>
+                <option value="llama">Llama 3</option>
+            </select>
         </div>
         <div class="input-row">
             <input type="text" id="message-input" class="input-field" placeholder="Parlez au pirate, moussaillon...">
@@ -193,6 +34,7 @@
         const chatContainer = document.getElementById('chat-container');
         const messageInput = document.getElementById('message-input');
         const passwordInput = document.getElementById('password-input');
+        const modelSelect = document.getElementById('model-select');
         const errorMessage = document.getElementById('error-message');
 
         messageInput.addEventListener('keypress', function(e) {
@@ -202,6 +44,7 @@
         async function sendMessage() {
             const message = messageInput.value.trim();
             const password = passwordInput.value.trim();
+            const selectedModel = modelSelect.value;
 
             if (!message || !password) {
                 showError('Tonnerre de Brest ! Il faut remplir tous les champs !');
@@ -215,8 +58,8 @@
             loadingDiv.className = 'message assistant loading-container';
             loadingDiv.innerHTML = `
                 <div class="loading-message">
-                    <span class="sway">⛵</span> 
-                    <div class="loading">Le capitaine réfléchit...</div>
+                    <span class="sway">⛵</span> Le capitaine réfléchit...
+                    <div class="loading"><div></div><div></div></div>
                 </div>
             `;
             chatContainer.appendChild(loadingDiv);
@@ -228,7 +71,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         message,
-                        password
+                        password,
+                        model: selectedModel
                     })
                 });
 

@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, request, jsonify, render_template
 import boto3
 import json
@@ -8,17 +7,50 @@ app = Flask(__name__)
 
 CHAT_PASSWORD = os.getenv('CHAT_PASSWORD')
 
-PIRATE_PROMPT = """Tu es un vieux pirate français bourru et alcoolique nommé Capitaine La Rochelle. 
+BASE_PIRATE_PROMPT = """Tu es un vieux pirate français bourru et alcoolique nommé Capitaine La Rochelle.
 Tu as navigué sur toutes les mers du globe et tu as un fort accent français quand tu parles.
 Tu ponctues tes phrases d'expressions comme 'Mille sabords !', 'Tonnerre de Brest !', 'Par la barbe de Neptune !', 'Moussaillon !'.
 Tu parles souvent de rhum, de tempêtes et de trésors. Tu racontes des histoires de tes batailles navales.
 Tu détestes particulièrement la Marine Royale et les pirates anglais.
 Tu as perdu ta jambe gauche dans une bataille contre un kraken.
-Tu réponds toujours avec l'humour grinçant d'un vieux loup de mer.
+Tu réponds toujours avec l'humour grinçant d'un vieux loup de mer."""
 
-Exemple de réponse :
-"Mille sabords, moussaillon ! *prend une gorgée de rhum* La Marine Royale ? Ces rats de cale ! J'en ai coulé plus que j'ai bu de bouteilles de rhum, et crois-moi, j'en ai bu beaucoup ! Hahaha !"
-"""
+MODEL_CONFIGS = {
+    'titan': {
+        'id': 'amazon.titan-text-express-v1',
+        'prompt_template': lambda message: [
+            {
+                "role": "system",
+                "content": BASE_PIRATE_PROMPT
+            },
+            {
+                "role": "user",
+                "content": message
+            }
+        ],
+        'make_body': lambda prompt: {
+            "inputText": json.dumps(prompt),
+            "textGenerationConfig": {
+                "maxTokenCount": 300,
+                "temperature": 0.8,
+                "topP": 0.9,
+                "stopSequences": ["User:"]
+            }
+        },
+        'get_response': lambda response_body: response_body.get('results')[0].get('outputText', '')
+    },
+    'llama': {
+        'id': 'meta.llama3-8b-instruct-v1:0',
+        'prompt_template': lambda message: f"[INST]{BASE_PIRATE_PROMPT}\n\n{message}[/INST]",
+        'make_body': lambda prompt: {
+            "prompt": prompt,
+            "temperature": 0.8,
+            "top_p": 0.9,
+            "max_gen_len": 300
+        },
+        'get_response': lambda response_body: response_body.get('generation', '').strip().replace(BASE_PIRATE_PROMPT, '').strip()
+    }
+}
 
 bedrock = boto3.client(
     service_name='bedrock-runtime',
@@ -41,26 +73,32 @@ def chat():
         password = data.get('password', '')
         if not validate_password(password):
             return jsonify({'error': 'Invalid password'}), 401
+
         message = data.get('message', '')
+        model_key = data.get('model', 'titan')
 
-        full_prompt = f"{PIRATE_PROMPT}{message}"
+        if model_key not in MODEL_CONFIGS:
+            return jsonify({'error': 'Invalid model selection'}), 400
 
-        body = json.dumps({
-            "inputText": full_prompt,
-            "textGenerationConfig": {
-                "maxTokenCount": 300,
-                "temperature": 0.8,
-                "topP": 0.9,
-            }
-        })
+        model_config = MODEL_CONFIGS[model_key]
+        prompt = model_config['prompt_template'](message)
+        body = model_config['make_body'](prompt)
 
         response = bedrock.invoke_model(
-            modelId='meta.llama3-8b-instruct-v1:0',
-            body=body
+            modelId=model_config['id'],
+            body=json.dumps(body)
         )
 
         response_body = json.loads(response.get('body').read())
-        return jsonify({'response': response_body.get('results')[0].get('outputText', '')})
+        response_text = model_config['get_response'](response_body)
+
+        response_text = response_text.strip()
+        if "[INST]" in response_text:
+            response_text = response_text.split("[INST]")[-1]
+        if "[/INST]" in response_text:
+            response_text = response_text.split("[/INST]")[-1]
+        
+        return jsonify({'response': response_text})
     
     except Exception as e:
         print(f"Error: {str(e)}")
