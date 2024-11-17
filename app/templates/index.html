@@ -20,15 +20,15 @@
     <h1>Chat</h1>
     <div id="chat-container"></div>
     <div class="input-container">
-        <input type="text" class="message-input" placeholder="Entrez le mot de passe...">
-        <input type="text" class="message-input" placeholder="Entrez votre message...">
+        <input type="text" class="message-input" id="password-input" placeholder="Entrez le mot de passe...">
+        <input type="text" class="message-input" id="prompt" placeholder="Entrez votre message...">
         <button onclick="sendMessage()">Send</button>
     </div>
 
     <script>
         const converter = new showdown.Converter();
         const chatContainer = document.getElementById('chat-container');
-        const messageInput = document.getElementById('message-input');
+        const messageInput = document.getElementById('prompt');
 
         messageInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') sendMessage();
