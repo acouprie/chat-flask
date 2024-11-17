@@ -1,0 +1,70 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>acouprie Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <style>
+        body { max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
+        #chat-container { height: 60vh; overflow-y: auto; border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; }
+        .message { margin-bottom: 10px; padding: 10px; border-radius: 5px; }
+        .user { background-color: #e3f2fd; margin-left: 20%; }
+        .assistant { background-color: #f5f5f5; margin-right: 20%; }
+        #input-container { display: flex; gap: 10px; }
+        #message-input { flex-grow: 1; padding: 10px; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Chat</h1>
+    <div id="chat-container"></div>
+    <div id="input-container">
+        <input type="text" id="message-input" placeholder="Entrez votre message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        const converter = new showdown.Converter();
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            appendMessage('user', message);
+            messageInput.value = '';
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                
+                // Add assistant message with markdown support
+                appendMessage('assistant', data.response);
+            } catch (error) {
+                appendMessage('assistant', `Error: ${error.message}`);
+            }
+        }
+
+        function appendMessage(role, content) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            div.innerHTML = converter.makeHtml(content);
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>
