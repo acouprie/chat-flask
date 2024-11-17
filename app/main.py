@@ -6,6 +6,7 @@ import os
 
 app = Flask(__name__)
 
+CHAT_PASSWORD = os.getenv('CHAT_PASSWORD')
 # Initialize Bedrock client
 bedrock = boto3.client(
     service_name='bedrock-runtime',
@@ -13,6 +14,9 @@ bedrock = boto3.client(
     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
 )
+
+def validate_password(password):
+    return password == CHAT_PASSWORD
 
 @app.route('/')
 def home():
@@ -22,6 +26,9 @@ def home():
 def chat():
     try:
         data = request.json
+        password = data.get('password', '')
+        if not validate_password(password):
+            return jsonify({'error': 'Invalid password'}), 401
         message = data.get('message', '')
 
         body = json.dumps({
